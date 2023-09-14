@@ -16,9 +16,9 @@ defmodule Crono.Parser.Utilities do
     end)
   end
 
-  def minute, do: 0 |> number(59) |> base()
-  def hour, do: 0 |> number(23) |> base()
-  def day, do: 1 |> number(31) |> base()
+  def minute, do: base(number(0, 59))
+  def hour, do: base(number(0, 23))
+  def day, do: base(number(1, 31))
 
   def month, do: [number(1, 12), month_as_letters()] |> choice() |> base()
 
