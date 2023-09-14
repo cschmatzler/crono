@@ -66,7 +66,11 @@ defmodule Crono.Parser.Utilities do
   end
 
   def list(base) do
-    base |> ignore(optional(string(","))) |> times(min: 2) |> tag(:list) |> label("list")
+    base
+    |> ignore(optional(string(",")))
+    |> times(min: 2)
+    |> tag(:list)
+    |> label("list")
   end
 
   def number(rest, [number, :negative], context, line, offset, min, max),
