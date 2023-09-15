@@ -88,7 +88,9 @@ defmodule Crono.Schedule do
   end
 
   defp adjust_datetime_weekday_list(list, expression, datetime) do
-    if datetime |> DateTime.to_date() |> Date.day_of_week() |> then(&Enum.member?(list, &1)) do
+    datetime_value = datetime |> DateTime.to_date() |> Date.day_of_week()
+
+    if Enum.member?(list, datetime_value) do
       datetime
     else
       get_next_date(expression, datetime)
