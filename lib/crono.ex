@@ -40,6 +40,12 @@ defmodule Crono do
 
   iex> Crono.parse("15,45 */6 14,28 * *")
   %Crono.Expression{minute: [list: [15, 45]], hour: [step: {:*, 6}], day: [list: [14, 28]], month: [:*], weekday: [:*]}
+
+  iex> Crono.parse("0 0 1 JAN *")
+  %Crono.Expression{minute: [0], hour: [0], day: [1], month: [1], weekday: [:*]}
+
+  iex> Crono.parse("0 0 * * WED")
+  %Crono.Expression{minute: [0], hour: [0], day: [:*], month: [:*], weekday: [3]}
   ```
   """
   def parse(input) do

@@ -4,7 +4,21 @@ defmodule Crono.Schedule do
   import Crono.Utilities
   import Kernel, except: [max: 2]
 
-  def get_next_dates(%Crono.Expression{} = expression, %DateTime{} = datetime \\ DateTime.utc_now()) do
+  def get_next_dates(
+        %Crono.Expression{} = expression,
+        %DateTime{} = datetime \\ DateTime.utc_now(),
+        count
+      ) do
+    expression
+    |> get_next_dates_stream(datetime)
+    |> Stream.take(count)
+    |> Enum.to_list()
+  end
+
+  def get_next_dates_stream(
+        %Crono.Expression{} = expression,
+        %DateTime{} = datetime \\ DateTime.utc_now()
+      ) do
     Stream.unfold(datetime, fn previous_datetime ->
       next_date = get_next_date(expression, previous_datetime)
 
