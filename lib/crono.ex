@@ -18,7 +18,8 @@ defmodule Crono do
   )
 
   @doc """
-  Parses a cron expression, returning a `Crono.CronExpression` struct if successful.   
+  Parses a cron expression, returning a `Crono.CronExpression` struct if successful.
+
   ## Examples
 
   ```elixir
