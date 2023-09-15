@@ -13,17 +13,19 @@ defmodule Crono.Expression do
   @type value(inner_type) ::
           [:*]
           | [inner_type]
+          # [step: {start, step}]
           | [step: {inner_type, pos_integer()}]
+          # [range: {from, to}]
           | [range: {inner_type, inner_type}]
           | [list: list(inner_type)]
 
-  def to_list(%__MODULE__{} = expression) do
+  def to_fields(%__MODULE__{} = expression) do
     [
-      {:minute, expression.minute},
-      {:hour, expression.hour},
-      {:day, expression.day},
+      {:weekday, expression.weekday},
       {:month, expression.month},
-      {:weekday, expression.weekday}
+      {:day, expression.day},
+      {:hour, expression.hour},
+      {:minute, expression.minute}
     ]
   end
 
