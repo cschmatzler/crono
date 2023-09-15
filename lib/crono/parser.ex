@@ -1,13 +1,17 @@
 defmodule Crono.Parser do
-  @moduledoc false
+  @moduledoc """
+  Helper functions to parse a cron expression, used by the parser in `Crono`.
+  """
+
+  import Crono.Utilities
   import NimbleParsec
 
-  def parts(parts) do
-    parts
+  def fields(fields) do
+    fields
     |> Enum.reverse()
-    |> Enum.reduce(fn part, rest ->
+    |> Enum.reduce(fn field, rest ->
       concat(
-        part,
+        field,
         concat(
           ignore(" " |> string() |> label("space")),
           rest
@@ -16,13 +20,14 @@ defmodule Crono.Parser do
     end)
   end
 
-  def minute, do: base(number(0, 59))
-  def hour, do: base(number(0, 23))
-  def day, do: base(number(1, 31))
+  def minute, do: base(number(min(:minute), max(:minute)))
+  def hour, do: base(number(min(:hour), max(:hour)))
+  def day, do: base(number(min(:day), max(:day)))
 
-  def month, do: [number(1, 12), month_as_letters()] |> choice() |> base()
+  def month, do: [number(min(:month), max(:month)), month_as_letters()] |> choice() |> base()
 
-  def weekday, do: [number(0, 7), weekday_as_letters()] |> choice() |> base()
+  def weekday,
+    do: [number(min(:weekday), max(:weekday)), weekday_as_letters()] |> choice() |> base()
 
   defp base(base) do
     choice([
