@@ -13,11 +13,19 @@ defmodule Crono.Expression do
   @type value(inner_type) ::
           [:*]
           | [inner_type]
-          # TODO: Is there a way to actually represent this?
-          # [step: [inner_type, pos_integer()]]
-          | [step: [...]]
-          | [range: [...]]
+          | [step: {inner_type, pos_integer()}]
+          | [range: {inner_type, inner_type}]
           | [list: list(inner_type)]
+
+  def to_list(%__MODULE__{} = expression) do
+    [
+      {:minute, expression.minute},
+      {:hour, expression.hour},
+      {:day, expression.day},
+      {:month, expression.month},
+      {:weekday, expression.weekday}
+    ]
+  end
 
   def time_of_day(%__MODULE__{minute: [minute], hour: [hour]})
       when is_integer(minute) and is_integer(hour) do
