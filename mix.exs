@@ -4,10 +4,13 @@ defmodule Crono.MixProject do
   def project do
     [
       app: :crono,
+      description: "Cron expressions in Elixir",
       version: "0.1.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      package: package(),
+      docs: docs()
     ]
   end
 
@@ -23,6 +26,22 @@ defmodule Crono.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test]},
       {:ex_doc, "~> 0.30", only: :dev},
       {:styler, "~> 0.9", only: [:dev, :test], runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      name: "crono",
+      licenses: ["MIT"],
+      maintainers: ["Christoph Schmatzler"],
+      links: %{"GitHub" => "https://github.com/cschmatzler/crono"}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "Crono",
+      extras: ["CHANGELOG.md"]
     ]
   end
 end
