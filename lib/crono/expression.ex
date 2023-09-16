@@ -11,13 +11,15 @@ defmodule Crono.Expression do
         }
 
   @type value(inner_type) ::
-          [:*]
-          | [inner_type]
+          :*
+          | inner_type
           # [step: {start, step}]
           | [step: {inner_type, pos_integer()}]
           # [range: {from, to}]
           | [range: {inner_type, inner_type}]
           | [list: list(inner_type)]
+
+  def sigil_e(input, _opts), do: Crono.parse!(input)
 
   def to_fields(%__MODULE__{} = expression) do
     [

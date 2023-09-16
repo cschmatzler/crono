@@ -20,14 +20,14 @@ defmodule Crono.Parser do
     end)
   end
 
-  def minute, do: base(number(min(:minute), max(:minute)))
-  def hour, do: base(number(min(:hour), max(:hour)))
-  def day, do: base(number(min(:day), max(:day)))
+  def minute, do: base(number(min_value(:minute), max_value(:minute)))
+  def hour, do: base(number(min_value(:hour), max_value(:hour)))
+  def day, do: base(number(min_value(:day), max_value(:day)))
 
-  def month, do: [number(min(:month), max(:month)), month_as_letters()] |> choice() |> base()
+  def month,
+    do: [number(min_value(:month), max_value(:month)), month_as_letters()] |> choice() |> base()
 
-  def weekday,
-    do: [number(min(:weekday), max(:weekday)), weekday_as_letters()] |> choice() |> base()
+  def weekday, do: [number(0, 6), weekday_as_letters()] |> choice() |> base()
 
   defp base(base) do
     choice([

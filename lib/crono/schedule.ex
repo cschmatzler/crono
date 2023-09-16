@@ -2,11 +2,10 @@ defmodule Crono.Schedule do
   @moduledoc false
 
   import Crono.Utilities
-  import Kernel, except: [max: 2]
 
   def get_next_dates(
         %Crono.Expression{} = expression,
-        %DateTime{} = datetime \\ DateTime.utc_now(),
+        %NaiveDateTime{} = datetime \\ NaiveDateTime.utc_now(),
         count
       ) do
     expression
@@ -17,20 +16,23 @@ defmodule Crono.Schedule do
 
   def get_next_dates_stream(
         %Crono.Expression{} = expression,
-        %DateTime{} = datetime \\ DateTime.utc_now()
+        %NaiveDateTime{} = datetime \\ NaiveDateTime.utc_now()
       ) do
     Stream.unfold(datetime, fn previous_datetime ->
       next_date = get_next_date(expression, previous_datetime)
 
-      {next_date, DateTime.add(next_date, 1, :minute)}
+      {next_date, NaiveDateTime.add(next_date, 1, :minute)}
     end)
   end
 
-  def get_next_date(%Crono.Expression{} = expression, %DateTime{} = datetime \\ DateTime.utc_now()) do
+  def get_next_date(
+        %Crono.Expression{} = expression,
+        %NaiveDateTime{} = datetime \\ NaiveDateTime.utc_now()
+      ) do
     get_date(expression, Crono.Expression.to_fields(expression), datetime)
   end
 
-  defp get_date(expression, [{_field, [:*]} | tail], datetime) do
+  defp get_date(expression, [{_field, :*} | tail], datetime) do
     get_date(expression, tail, datetime)
   end
 
@@ -42,21 +44,29 @@ defmodule Crono.Schedule do
     )
   end
 
-  defp get_date(_expression, [], datetime), do: DateTime.truncate(%{datetime | second: 0}, :second)
+  defp get_date(_expression, [], datetime),
+    do: NaiveDateTime.truncate(%{datetime | second: 0}, :second)
 
   @next [minute: :hour, hour: :day, day: :month, month: :year]
-  defp adjust_datetime(expression, :weekday, [value], datetime) when is_integer(value) do
-    case datetime |> DateTime.to_date() |> Date.day_of_week() do
+  defp adjust_datetime(expression, :weekday, value, datetime) when is_integer(value) do
+    # NOTE: `Date.day_of_week/2` returns a number from 1 to 7, whereas cron uses 0 to 6
+    case datetime |> NaiveDateTime.to_date() |> Date.day_of_week(:sunday) |> Kernel.-(1) do
       ^value -> datetime
-      _ -> get_next_date(expression, datetime)
+      # FIXME: Adding 1 isn't the most efficient way and adds extra levels of recursion
+      _current -> adjust_datetime(expression, :weekday, value, NaiveDateTime.add(datetime, 1, :day))
     end
   end
 
   defp adjust_datetime(expression, :weekday, [step: {:*, step}], datetime),
-    do: adjust_datetime_weekday_list(min(:weekday)..max(:weekday)//step, expression, datetime)
+    do:
+      adjust_datetime_weekday_list(
+        min_value(:weekday)..max_value(:weekday)//step,
+        expression,
+        datetime
+      )
 
   defp adjust_datetime(expression, :weekday, [step: {start, step}], datetime),
-    do: adjust_datetime_weekday_list(start..max(:weekday)//step, expression, datetime)
+    do: adjust_datetime_weekday_list(start..max_value(:weekday)//step, expression, datetime)
 
   defp adjust_datetime(expression, :weekday, [range: {from, to}], datetime),
     do: adjust_datetime_weekday_list(from..to, expression, datetime)
@@ -64,13 +74,13 @@ defmodule Crono.Schedule do
   defp adjust_datetime(expression, :weekday, [list: list], datetime),
     do: adjust_datetime_weekday_list(list, expression, datetime)
 
-  defp adjust_datetime(expression, type, [value], datetime)
+  defp adjust_datetime(expression, type, value, datetime)
        when is_integer(value) and type in [:minute, :hour, :day, :month] do
     case Map.get(datetime, type) do
       ^value ->
         datetime
 
-      datetime_value when datetime_value <= value ->
+      datetime_value when datetime_value < value ->
         Map.put(datetime, type, value)
 
       _ ->
@@ -84,11 +94,11 @@ defmodule Crono.Schedule do
 
   defp adjust_datetime(expression, type, [step: {:*, step}], datetime)
        when type in [:minute, :hour, :day, :month],
-       do: adjust_datetime(expression, type, [step: {min(type), step}], datetime)
+       do: adjust_datetime(expression, type, [step: {min_value(type), step}], datetime)
 
   defp adjust_datetime(expression, type, [step: {start, step}], datetime)
        when type in [:minute, :hour, :day, :month] do
-    start..max(type, Map.get(datetime, @next[type]))//step
+    start..max_value(type, datetime)//step
     |> Enum.to_list()
     |> adjust_datetime_list(expression, type, datetime)
   end
@@ -119,12 +129,12 @@ defmodule Crono.Schedule do
       |> Enum.drop_while(fn x -> x < datetime_value end)
       |> List.first()
       |> then(&Map.put(datetime, type, &1))
-      |> clean_datetime(type)
     end
   end
 
   defp adjust_datetime_weekday_list(list, expression, datetime) do
-    datetime_value = datetime |> DateTime.to_date() |> Date.day_of_week()
+    # NOTE: `Date.day_of_week/2` returns a number from 1 to 7, whereas cron uses 0 to 6
+    datetime_value = datetime |> NaiveDateTime.to_date() |> Date.day_of_week(:sunday) |> Kernel.-(1)
 
     if Enum.member?(list, datetime_value) do
       datetime

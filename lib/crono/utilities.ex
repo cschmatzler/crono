@@ -1,28 +1,16 @@
 defmodule Crono.Utilities do
   @moduledoc false
 
-  def min(:minute), do: 0
-  def min(:hour), do: 0
-  def min(:day), do: 1
-  def min(:month), do: 1
-  def min(:weekday), do: 0
+  def min_value(:minute), do: 0
+  def min_value(:hour), do: 0
+  def min_value(:day), do: 1
+  def min_value(:month), do: 1
+  def min_value(:weekday), do: 0
 
-  def max(type, next_value \\ 1)
-  def max(:minute, _next_value), do: 59
-  def max(:hour, _next_value), do: 23
-  def max(:day, 1), do: 31
-  # TODO: Leap years?!
-  def max(:day, 2), do: 28
-  def max(:day, 3), do: 31
-  def max(:day, 4), do: 30
-  def max(:day, 5), do: 31
-  def max(:day, 6), do: 30
-  def max(:day, 7), do: 31
-  def max(:day, 8), do: 31
-  def max(:day, 9), do: 30
-  def max(:day, 10), do: 31
-  def max(:day, 11), do: 30
-  def max(:day, 12), do: 31
-  def max(:month, _next_value), do: 12
-  def max(:weekday, _next_value), do: 7
+  def max_value(type, datetime \\ NaiveDateTime.utc_now())
+  def max_value(:minute, _datetime), do: 59
+  def max_value(:hour, _datetime), do: 23
+  def max_value(:day, datetime), do: datetime |> NaiveDateTime.to_date() |> Date.days_in_month()
+  def max_value(:month, _next_value), do: 12
+  def max_value(:weekday, _next_value), do: 6
 end

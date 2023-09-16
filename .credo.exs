@@ -87,6 +87,7 @@
           {Credo.Check.Warning.MixEnv, []},
         ],
         disabled: [
+          {Credo.Check.Design.TagFIXME, []},
           {Credo.Check.Consistency.MultiAliasImportRequireUse, []},
           {Credo.Check.Consistency.ParameterPatternMatching, []},
           {Credo.Check.Consistency.UnusedVariableNames, []},
