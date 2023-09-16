@@ -1,7 +1,8 @@
 defmodule Crono do
-  @moduledoc """
-  Documentation for `Crono`.
-  """
+  @moduledoc "README.md"
+             |> File.read!()
+             |> String.split("<!-- MDOC !-->")
+             |> Enum.fetch!(1)
 
   import Crono.Parser
   import NimbleParsec

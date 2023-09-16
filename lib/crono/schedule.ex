@@ -1,5 +1,10 @@
 defmodule Crono.Schedule do
-  @moduledoc false
+  @moduledoc """
+  Functions to work with cron schedules.
+
+
+
+  """
 
   import Crono.Utilities
 
@@ -25,10 +30,16 @@ defmodule Crono.Schedule do
     end)
   end
 
-  def get_next_date(
-        %Crono.Expression{} = expression,
-        %NaiveDateTime{} = datetime \\ NaiveDateTime.utc_now()
-      ) do
+  def get_next_date(expression, datetime \\ NaiveDateTime.utc_now())
+
+  def get_next_date(%Crono.Expression{} = expression, %DateTime{} = datetime) do
+    datetime
+    |> DateTime.to_naive()
+    |> then(&get_next_date(expression, &1))
+    |> DateTime.from_naive(datetime.time_zone)
+  end
+
+  def get_next_date(%Crono.Expression{} = expression, %NaiveDateTime{} = datetime) do
     get_date(expression, Crono.Expression.to_fields(expression), datetime)
   end
 
