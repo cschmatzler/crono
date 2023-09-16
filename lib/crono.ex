@@ -62,6 +62,9 @@ defmodule Crono do
             {field, [value]}, expression when is_integer(value) ->
               Map.put(expression, field, value)
 
+            {field, [step: {{:range, {from, to}}, step}]}, expression ->
+              Map.put(expression, field, step: {[range: {from, to}], step})
+
             {field, value}, expression ->
               Map.put(expression, field, value)
           end)

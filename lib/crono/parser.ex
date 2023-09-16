@@ -30,6 +30,7 @@ defmodule Crono.Parser do
   defp base(base) do
     choice([
       step(base),
+      step(range(base)),
       range(base),
       list(base),
       wildcard(),

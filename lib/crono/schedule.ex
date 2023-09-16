@@ -127,6 +127,12 @@ defmodule Crono.Schedule do
        when type in [:minute, :hour, :day, :month],
        do: adjust_datetime(expression, type, [step: {min_value(type), step}], datetime)
 
+  defp adjust_datetime(expression, type, [step: {[range: {from, to}], step}], datetime) do
+    from..to//step
+    |> Enum.to_list()
+    |> adjust_datetime_list(expression, type, datetime)
+  end
+
   defp adjust_datetime(expression, type, [step: {start, step}], datetime)
        when type in [:minute, :hour, :day, :month] do
     start..max_value(type, datetime)//step
