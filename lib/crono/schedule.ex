@@ -1,35 +1,22 @@
 defmodule Crono.Schedule do
   @moduledoc """
   Functions to work with cron schedules.
-
-
-
   """
 
   import Crono.Utilities
 
-  def get_next_dates(
-        %Crono.Expression{} = expression,
-        %NaiveDateTime{} = datetime \\ NaiveDateTime.utc_now(),
-        count
-      ) do
-    expression
-    |> get_next_dates_stream(datetime)
-    |> Stream.take(count)
-    |> Enum.to_list()
-  end
+  @doc """
+  Calculates the next scheduled run given a `Crono.Expression` and a date (defaulting to now).
 
-  def get_next_dates_stream(
-        %Crono.Expression{} = expression,
-        %NaiveDateTime{} = datetime \\ NaiveDateTime.utc_now()
-      ) do
-    Stream.unfold(datetime, fn previous_datetime ->
-      next_date = get_next_date(expression, previous_datetime)
+  ## Examples
 
-      {next_date, NaiveDateTime.add(next_date, 1, :minute)}
-    end)
-  end
-
+  ```elixir
+  iex> get_next_date(~e[0 0 * * *], ~N[2023-09-01T15:00:00])
+  ~N[2023-09-02T00:00:00]
+  ```
+  """
+  @spec get_next_date(Crono.Expression.t(), NaiveDateTime.t() | DateTime.t()) ::
+          NaiveDateTime.t() | DateTime.t()
   def get_next_date(expression, datetime \\ NaiveDateTime.utc_now())
 
   def get_next_date(%Crono.Expression{} = expression, %DateTime{} = datetime) do
@@ -41,6 +28,39 @@ defmodule Crono.Schedule do
 
   def get_next_date(%Crono.Expression{} = expression, %NaiveDateTime{} = datetime) do
     get_date(expression, Crono.Expression.to_fields(expression), datetime)
+  end
+
+  @doc """
+  Calculates the next few scheduled runs given a `Crono.Expression`, a date (defaulting to now) and
+  a count.
+
+  ## Examples
+
+  ```elixir
+  iex> get_next_dates(~e[0 0 * * *], ~N[2023-09-01T15:00:00], 3)
+  [~N[2023-09-02T00:00:00], ~N[2023-09-03T00:00:00], ~N[2023-09-04T00:00:00]]
+  ```
+  """
+  @spec get_next_dates(Crono.Expression.t(), NaiveDateTime.t(), pos_integer()) ::
+          list(NaiveDateTime.t())
+  def get_next_dates(
+        %Crono.Expression{} = expression,
+        %NaiveDateTime{} = datetime \\ NaiveDateTime.utc_now(),
+        count
+      )
+      when count > 0 do
+    expression
+    |> get_next_dates_stream(datetime)
+    |> Stream.take(count)
+    |> Enum.to_list()
+  end
+
+  defp get_next_dates_stream(%Crono.Expression{} = expression, %NaiveDateTime{} = datetime) do
+    Stream.unfold(datetime, fn previous_datetime ->
+      next_date = get_next_date(expression, previous_datetime)
+
+      {next_date, NaiveDateTime.add(next_date, 1, :minute)}
+    end)
   end
 
   defp get_date(expression, [{_field, :*} | tail], datetime) do

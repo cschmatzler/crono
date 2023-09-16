@@ -73,6 +73,9 @@ defmodule Crono do
     end
   end
 
+  @doc """
+  Like `Crono.parse/1`, but raises on error.
+  """
   def parse!(input) do
     case parse(input) do
       {:ok, %Crono.Expression{} = expression} -> expression

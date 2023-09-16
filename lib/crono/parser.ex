@@ -1,7 +1,5 @@
 defmodule Crono.Parser do
-  @moduledoc """
-  Helper functions to parse a cron expression, used by the parser in `Crono`.
-  """
+  @moduledoc false
 
   import Crono.Utilities
   import NimbleParsec

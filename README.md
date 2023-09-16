@@ -20,9 +20,6 @@ iex> ~e[5 * * * *]
 
 iex> Crono.Schedule.get_next_date(~e[5 * * * *], ~N[2023-09-01T10:00:00])
 ~N[2023-09-01T10:05:00]
-
-iex> Crono.Expression.describe(~e[5 * * * *])
-"Every 5 minutes"
 ```
 
 ## Installation

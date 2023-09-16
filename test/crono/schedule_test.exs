@@ -2,6 +2,9 @@ defmodule Crono.ScheduleTest do
   use ExUnit.Case, async: true
 
   import Crono.Expression
+  import Crono.Schedule
+
+  doctest Crono.Schedule
 
   describe "get_next_date/2" do
     test "returns next date for a cron expression" do
