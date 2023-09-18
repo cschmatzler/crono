@@ -119,7 +119,7 @@ defmodule Crono.Schedule do
       _ ->
         datetime
         |> Map.put(type, value)
-        |> Map.update!(@next[type], &(&1 + 1))
+        |> datetime_increase(@next[type])
         |> clean_datetime(type)
         |> then(&get_next_date(expression, &1))
     end
@@ -154,13 +154,31 @@ defmodule Crono.Schedule do
     else
       list
       |> Enum.sort()
-      |> Enum.drop_while(fn x -> x < datetime_value end)
+      |> Enum.drop_while(fn x ->
+        if type in [:minute, :hour] do
+          x < datetime_value
+        else
+          x <= datetime_value
+        end
+      end)
       |> List.first()
       |> then(&adjust_datetime(expression, type, &1, datetime))
     end
   end
 
-  def get_weekdays_in_month(datetime, value) do
+  defp datetime_increase(datetime, type) when type in [:day, :hour, :minute],
+    do: NaiveDateTime.add(datetime, 1, type)
+
+  defp datetime_increase(%NaiveDateTime{month: month} = datetime, :month) when month in 1..11,
+    do: %{datetime | month: month + 1}
+
+  defp datetime_increase(%NaiveDateTime{year: year} = datetime, :month),
+    do: %{datetime | month: 1, year: year + 1}
+
+  defp datetime_increase(%NaiveDateTime{year: year} = datetime, :year),
+    do: %{datetime | year: year + 1}
+
+  defp get_weekdays_in_month(datetime, value) do
     allowed_weekdays = expand_list(List.wrap(value), :weekday, datetime)
 
     last_day_in_month = datetime |> NaiveDateTime.to_date() |> Date.end_of_month()
