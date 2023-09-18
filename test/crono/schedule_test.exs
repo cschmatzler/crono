@@ -1,7 +1,7 @@
 defmodule Crono.ScheduleTest do
   use ExUnit.Case, async: true
 
-  import Crono.Expression
+  import Crono.Expression, except: [describe: 2]
   import Crono.Schedule
 
   doctest Crono.Schedule
@@ -109,6 +109,14 @@ defmodule Crono.ScheduleTest do
     test "respects leap years" do
       assert Crono.Schedule.get_next_date(~e[0 0 * * *], ~N[2024-02-28T23:59:00]) ==
                ~N[2024-02-29T00:00:00]
+    end
+
+    test "non-trivial" do
+      assert Crono.Schedule.get_next_date(
+               ~e[15 23 14 1,FEB-APR/2,5,7,OCT-DEC *],
+               ~N[2023-09-18T19:24:00]
+             ) ==
+               ~N[2023-10-14 23:15:00]
     end
   end
 end

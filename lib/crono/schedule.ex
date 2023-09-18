@@ -5,6 +5,9 @@ defmodule Crono.Schedule do
 
   import Crono.Utilities
 
+  @next [minute: :hour, hour: :day, day: :month, month: :year]
+  @previous [hour: :minute, day: :hour, month: :day, year: :month]
+
   @doc """
   Calculates the next scheduled run given a `Crono.Expression` and a date (defaulting to now).
 
@@ -27,7 +30,7 @@ defmodule Crono.Schedule do
   end
 
   def get_next_date(%Crono.Expression{} = expression, %NaiveDateTime{} = datetime) do
-    get_date(expression, Crono.Expression.to_fields(expression), datetime)
+    get_date(expression, datetime)
   end
 
   @doc """
@@ -63,56 +66,55 @@ defmodule Crono.Schedule do
     end)
   end
 
-  defp get_date(expression, [{_field, :*} | tail], datetime) do
-    get_date(expression, tail, datetime)
+  defp get_date(expression, datetime, previous_field \\ nil)
+
+  defp get_date(expression, datetime, nil) do
+    adjust_for_field(expression, :month, expression.month, datetime)
   end
 
-  defp get_date(expression, [{field, value} | tail], datetime) do
-    get_date(
-      expression,
-      tail,
-      adjust_datetime(expression, field, value, datetime)
-    )
+  defp get_date(expression, datetime, :month) do
+    value =
+      case {expression.day, expression.weekday} do
+        {:*, :*} ->
+          :*
+
+        {:*, weekday_value} ->
+          weekday_value
+
+        {day_value, :*} ->
+          day_value
+
+        {day_value, weekday_value} ->
+          {:list, [day_value | get_weekdays_in_month(datetime, weekday_value)]}
+      end
+
+    adjust_for_field(expression, :day, value, datetime)
   end
 
-  defp get_date(_expression, [], datetime),
+  defp get_date(_expression, datetime, :minute),
     do: NaiveDateTime.truncate(%{datetime | second: 0}, :second)
 
-  @next [minute: :hour, hour: :day, day: :month, month: :year]
-  defp adjust_datetime(expression, :weekday, value, datetime) when is_integer(value) do
-    # NOTE: `Date.day_of_week/2` returns a number from 1 to 7, whereas cron uses 0 to 6
-    case datetime |> NaiveDateTime.to_date() |> Date.day_of_week(:sunday) |> Kernel.-(1) do
-      ^value -> datetime
-      # FIXME: Adding 1 isn't the most efficient way and adds extra levels of recursion
-      _current -> adjust_datetime(expression, :weekday, value, NaiveDateTime.add(datetime, 1, :day))
-    end
+  defp get_date(expression, datetime, previous_field) do
+    field = @previous[previous_field]
+
+    adjust_for_field(expression, field, Map.get(expression, field), datetime)
   end
 
-  defp adjust_datetime(expression, :weekday, [step: {:*, step}], datetime),
-    do:
-      adjust_datetime_weekday_list(
-        min_value(:weekday)..max_value(:weekday)//step,
-        expression,
-        datetime
-      )
+  defp adjust_for_field(expression, type, value, datetime) do
+    get_date(expression, adjust_datetime(expression, type, value, datetime), type)
+  end
 
-  defp adjust_datetime(expression, :weekday, [step: {start, step}], datetime),
-    do: adjust_datetime_weekday_list(start..max_value(:weekday)//step, expression, datetime)
+  defp adjust_datetime(_expression, _type, :*, datetime), do: datetime
 
-  defp adjust_datetime(expression, :weekday, [range: {from, to}], datetime),
-    do: adjust_datetime_weekday_list(from..to, expression, datetime)
-
-  defp adjust_datetime(expression, :weekday, [list: list], datetime),
-    do: adjust_datetime_weekday_list(list, expression, datetime)
-
-  defp adjust_datetime(expression, type, value, datetime)
-       when is_integer(value) and type in [:minute, :hour, :day, :month] do
+  defp adjust_datetime(expression, type, value, datetime) when is_integer(value) do
     case Map.get(datetime, type) do
       ^value ->
         datetime
 
       datetime_value when datetime_value < value ->
-        Map.put(datetime, type, value)
+        datetime
+        |> Map.put(type, value)
+        |> clean_datetime(type)
 
       _ ->
         datetime
@@ -123,33 +125,23 @@ defmodule Crono.Schedule do
     end
   end
 
-  defp adjust_datetime(expression, type, [step: {:*, step}], datetime)
-       when type in [:minute, :hour, :day, :month],
-       do: adjust_datetime(expression, type, [step: {min_value(type), step}], datetime)
+  defp adjust_datetime(expression, type, {:list, list}, datetime),
+    do: adjust_datetime_list(expand_list(list, type, datetime), expression, type, datetime)
 
-  defp adjust_datetime(expression, type, [step: {[range: {from, to}], step}], datetime) do
-    from..to//step
-    |> Enum.to_list()
-    |> adjust_datetime_list(expression, type, datetime)
-  end
+  defp adjust_datetime(expression, type, {:step, {:*, step}}, datetime),
+    do: adjust_datetime(expression, type, {:step, {min_value(type), step}}, datetime)
 
-  defp adjust_datetime(expression, type, [step: {start, step}], datetime)
-       when type in [:minute, :hour, :day, :month] do
+  defp adjust_datetime(expression, type, {:step, {start, step}}, datetime) do
     start..max_value(type, datetime)//step
     |> Enum.to_list()
     |> adjust_datetime_list(expression, type, datetime)
   end
 
-  defp adjust_datetime(expression, type, [range: {from, to}], datetime)
-       when type in [:minute, :hour, :day, :month] do
+  defp adjust_datetime(expression, type, {:range, {from, to}}, datetime) do
     from..(to + 1)
     |> Enum.to_list()
     |> adjust_datetime_list(expression, type, datetime)
   end
-
-  defp adjust_datetime(expression, type, [list: list], datetime)
-       when type in [:minute, :hour, :day, :month],
-       do: adjust_datetime_list(list, expression, type, datetime)
 
   defp adjust_datetime_list(list, expression, type, datetime) do
     datetime_value = Map.get(datetime, type)
@@ -159,28 +151,58 @@ defmodule Crono.Schedule do
       |> Map.put(type, Enum.min(list))
       |> Map.update!(@next[type], &(&1 + 1))
       |> clean_datetime(type)
-      |> then(&get_next_date(expression, &1))
     else
       list
       |> Enum.sort()
       |> Enum.drop_while(fn x -> x < datetime_value end)
       |> List.first()
-      |> then(&Map.put(datetime, type, &1))
+      |> then(&adjust_datetime(expression, type, &1, datetime))
     end
   end
 
-  defp adjust_datetime_weekday_list(list, expression, datetime) do
-    # NOTE: `Date.day_of_week/2` returns a number from 1 to 7, whereas cron uses 0 to 6
-    datetime_value = datetime |> NaiveDateTime.to_date() |> Date.day_of_week(:sunday) |> Kernel.-(1)
+  def get_weekdays_in_month(datetime, value) do
+    allowed_weekdays = expand_list(List.wrap(value), :weekday, datetime)
 
-    if Enum.member?(list, datetime_value) do
-      datetime
-    else
-      get_next_date(expression, datetime)
+    last_day_in_month = datetime |> NaiveDateTime.to_date() |> Date.end_of_month()
+
+    datetime.day..last_day_in_month.day
+    |> Enum.map(&Date.new!(datetime.year, datetime.month, &1))
+    |> Enum.filter(fn date ->
+      date |> Date.day_of_week() |> then(&Enum.member?(allowed_weekdays, &1))
+    end)
+    |> Enum.map(& &1.day)
+  end
+
+  # TODO: rename
+  defp expand_list(list, type, datetime, acc \\ []) do
+    case list do
+      [item | tail] when is_integer(item) ->
+        expand_list(tail, type, datetime, [item | acc])
+
+      [{:step, {start, step}} | tail] when is_integer(start) ->
+        item = start..max_value(type, datetime)//step
+        expand_list(tail, type, datetime, [item | acc])
+
+      [{:step, {{:range, {from, to}}, step}} | tail] when is_integer(from) and is_integer(to) ->
+        item = Enum.to_list(from..to//step)
+        expand_list(tail, type, datetime, [item | acc])
+
+      [{:range, {from, to}} | tail] when is_integer(from) and is_integer(to) ->
+        item = Enum.to_list(from..to)
+        expand_list(tail, type, datetime, [item | acc])
+
+      [{:list, list} | tail] ->
+        expand_list(tail, type, datetime, [expand_list(list, type, datetime) | acc])
+
+      [] ->
+        acc |> Enum.reverse() |> List.flatten()
+
+      list ->
+        acc ++ list
     end
   end
 
-  defp clean_datetime(datetime, :month), do: %{datetime | minute: 0, hour: 0, day: 0}
+  defp clean_datetime(datetime, :month), do: %{datetime | minute: 0, hour: 0, day: 1}
   defp clean_datetime(datetime, :day), do: %{datetime | minute: 0, hour: 0}
   defp clean_datetime(datetime, :hour), do: %{datetime | minute: 0}
   defp clean_datetime(datetime, _), do: datetime

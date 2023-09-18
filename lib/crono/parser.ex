@@ -29,12 +29,11 @@ defmodule Crono.Parser do
 
   defp base(base) do
     choice([
-      step(base),
-      step(range(base)),
-      range(base),
       list(base),
-      wildcard(),
-      base
+      step(base),
+      range(base),
+      base,
+      wildcard()
     ])
   end
 
@@ -52,8 +51,17 @@ defmodule Crono.Parser do
     |> post_traverse({__MODULE__, :number, [min, max]})
   end
 
+  def list(base) do
+    [step(base), range(base), base, wildcard()]
+    |> choice()
+    |> ignore(optional(string(",")))
+    |> times(min: 2)
+    |> tag(:list)
+    |> label("list")
+  end
+
   def step(base) do
-    [base, wildcard()]
+    [range(base), base, wildcard()]
     |> choice()
     |> ignore(string("/"))
     |> concat(integer(min: 1))
@@ -70,15 +78,6 @@ defmodule Crono.Parser do
     |> tag(:range)
     |> label("range")
     |> post_traverse({__MODULE__, :range, []})
-  end
-
-  def list(base) do
-    [base, wildcard()]
-    |> choice()
-    |> ignore(optional(string(",")))
-    |> times(min: 2)
-    |> tag(:list)
-    |> label("list")
   end
 
   def number(rest, [number, :negative], context, line, offset, min, max),
