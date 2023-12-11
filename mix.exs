@@ -24,7 +24,7 @@ defmodule Crono.MixProject do
     [
       {:nimble_parsec, "~> 1.3"},
       {:credo, "~> 1.7", only: [:dev, :test]},
-      {:ex_doc, "~> 0.30", only: :dev},
+      {:ex_doc, "~> 0.31", only: :dev},
       {:styler, "~> 0.9", only: [:dev, :test], runtime: false}
     ]
   end
